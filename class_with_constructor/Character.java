@@ -10,12 +10,6 @@ public class Character {
         System.out.println("\nHello I am " + name + "!");
     }
 
-    public void sayMyAttributes() {
-        System.out.println("My Strength is " + strength);
-        System.out.println("My Agility is " + agility);
-        System.out.println("My Intelligence is " + intelligence);
-    }
-
     // Constructor
     public Character(int str, int agi, int intel, String characterName) {
         strength = str;
