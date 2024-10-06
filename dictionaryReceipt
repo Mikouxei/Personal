@@ -1,0 +1,278 @@
+items = {
+    'sea halberd': 100.00,
+    'windtalker': 250.00,
+    'golden staff': 200.00,
+    'rose gold meteor': 440.00,
+    'endless battle': 150.00,
+    'corrosion scythe': 520.00,
+    'bloodlust axe': 480.00,
+    'berserkers fury': 310.00,
+    'demon hunter sword': 170.00,
+    'hunter strike': 200.00,
+    'haas claws': 250.00,
+    'blade of despair': 500.00,
+    'malefic roar': 360.00,
+    'blade of heptaseas': 220.00,
+    'war axe': 150.00,
+    'wind of nature': 300.00
+}
+
+admin_password = 'admin123'
+cashier_password = 'cashier123'
+
+last_payment = 0
+last_change = 0
+payment_made = False 
+
+def admin_menu():
+    print("\n--- Admin Menu ---")
+    print("1. Add Item")
+    print("2. Remove Item")
+    print("3. Change Item")
+    print("4. View Items")
+    print("5. Logout")
+
+    choice = input("\nEnter choice: ")
+
+    if choice == '1':
+        add_item()
+    elif choice == '2':
+        remove_item()
+    elif choice == '3':
+        change_item()
+    elif choice == '4':
+        view_items()
+    elif choice == '5':
+        main_menu()
+    else:
+        print("\nInvalid choice. Try again.")
+        admin_menu()
+
+
+def add_item():
+    item_name = input("Enter item name: ").lower()
+    item_price = float(input("Enter item price: "))
+    items[item_name] = item_price
+    print(f"\nItem '{item_name}' added successfully!")
+    admin_menu()
+
+
+def remove_item():
+    print("\n--- Available Items ---")
+    item_list = list(items.items())
+    for idx, (item, price) in enumerate(item_list, start=1):
+        print(f"{idx}. {item}: PHP {price:.2f}")
+    
+    try:
+        item_number = int(input("\nEnter item number to remove: "))
+        if 1 <= item_number <= len(item_list):
+            selected_item = item_list[item_number - 1][0]
+            del items[selected_item]
+            print(f"Item '{selected_item}' removed successfully!")
+        else:
+            print("\nInvalid item number. Try again.")
+            remove_item()
+    except ValueError:
+        print("\nInvalid input. Please enter a number.")
+        remove_item()
+
+    admin_menu()
+
+
+def change_item():
+    print("\n--- Available Items ---")
+    item_list = list(items.items())
+    for idx, (item, price) in enumerate(item_list, start=1):
+        print(f"{idx}. {item}: PHP {price:.2f}")
+    
+    try:
+        item_number = int(input("\nEnter item number to change: "))
+        if 1 <= item_number <= len(item_list):
+            selected_item = item_list[item_number - 1][0]
+            new_name = input(f"Enter new name for '{selected_item}' (leave blank to keep the same): ").lower()
+            new_name = new_name if new_name else selected_item
+            new_price = float(input(f"Enter new price for '{new_name}': "))
+            items[new_name] = new_price
+            if new_name != selected_item:
+                del items[selected_item]
+            print(f"Item '{selected_item}' changed to '{new_name}' with new price PHP {new_price:.2f}")
+        else:
+            print("\nInvalid item number. Try again.")
+            change_item()
+    except ValueError:
+        print("\nInvalid input. Please enter a number.")
+        change_item()
+
+    admin_menu()
+
+
+def view_items():
+    print("\n--- Available Items ---")
+    for item, price in items.items():
+        print(f"{item}: PHP {price:.2f}")
+    admin_menu()
+
+
+def cashier_menu(cart=None, total_purchase=0.0):
+    cart = cart or {}
+    print("\n--- Cashier Menu ---")
+    print("1. Add Item to Receipt")
+    print("2. Make Payment")
+    print("3. Print Receipt")
+    print("4. Try Again / Buy Again")
+    print("5. Logout")
+
+    choice = input("\nEnter choice: ")
+
+    if choice == '1':
+        cart, total_purchase = add_to_receipt(cart, total_purchase)
+        cashier_menu(cart, total_purchase)
+    elif choice == '2':
+        if cart:
+            print_calculation(cart, total_purchase)
+            payment(total_purchase)
+            cashier_menu(cart, total_purchase)
+        else:
+            print("\nNo items in the cart. Add items before making payment.")
+            cashier_menu(cart, total_purchase)
+    elif choice == '3':
+        if cart and payment_made:
+            print_detailed_receipt(cart, total_purchase)
+            back_to_menu()
+        elif not payment_made:
+            print("\nPlease make a payment first.")
+            cashier_menu(cart, total_purchase)
+        else:
+            print("\nNo items in the cart. Add items before printing receipt.")
+            cashier_menu(cart, total_purchase)
+    elif choice == '4':
+        reset_cashier_session()  
+        cashier_menu()
+    elif choice == '5':
+        main_menu()
+    else:
+        print("\nInvalid choice. Try again.")
+        cashier_menu(cart, total_purchase)
+
+
+def add_to_receipt(cart, total_purchase):
+    while True:
+        print("\n--- Available Items ---")
+        item_list = list(items.items())
+        for idx, (item, price) in enumerate(item_list, start=1):
+            print(f"{idx}. {item}: PHP {price:.2f}")
+        
+        print("Type 'done' when finished adding items.")
+
+        selection = input("\nEnter item number to add to receipt or type 'done': ").lower()
+        if selection == 'done':
+            if not cart: 
+                print("\nNo items added. Returning to cashier menu.")
+                cashier_menu(cart, total_purchase)
+            return cart, total_purchase
+
+        try:
+            item_number = int(selection)
+            if 1 <= item_number <= len(item_list):
+                selected_item = item_list[item_number - 1][0]
+                quantity = int(input(f"Enter quantity of '{selected_item}': "))
+                if selected_item in cart:
+                    cart[selected_item] += quantity
+                else:
+                    cart[selected_item] = quantity
+                total_purchase += items[selected_item] * quantity
+                print(f"{quantity} {selected_item}(s) added to the cart.")
+            else:
+                print("\nInvalid item number. Try again.")
+        except ValueError:
+            print("\nInvalid input. Please enter a valid number or type 'done'.")
+    
+    return cart, total_purchase
+
+
+def payment(total_purchase):
+    global last_payment, last_change, payment_made
+    print(f"\nTotal Purchase: PHP {total_purchase:.2f}")
+    while True:
+        amount_paid = float(input("Enter amount paid: "))
+        if amount_paid >= total_purchase:
+            last_payment = amount_paid
+            last_change = amount_paid - total_purchase
+            payment_made = True 
+            print(f"Change: PHP {last_change:.2f}")
+            print("\nPayment successfully made!")
+            break
+        else:
+            print("\nInsufficient payment. Please enter a valid amount.")
+
+
+def print_calculation(cart, total_purchase):
+    print("\n--- Calculation ---")
+    for item, quantity in cart.items():
+        print(f"{item.capitalize()} x{quantity} = PHP {items[item] * quantity:.2f}")
+    
+
+
+def print_detailed_receipt(cart, total_purchase):
+    global last_payment, last_change
+    print("\n--- Detailed Receipt ---")
+    for item, quantity in cart.items():
+        print(f"{item.capitalize()} x{quantity} = PHP {items[item] * quantity:.2f}")
+    print(f"\nTotal Purchase: PHP {total_purchase:.2f}")
+    print(f"Amount Paid: PHP {last_payment:.2f}")
+    print(f"Change: PHP {last_change:.2f}")
+
+
+def back_to_menu():
+    while True:
+        back = input("\nType 'back' to return to the Cashier Menu: ").lower()
+        if back == 'back':
+            cashier_menu()
+        else:
+            print("\nInvalid input. Please type 'back' to return to the Cashier Menu.")
+
+
+def reset_cashier_session():
+    global last_payment, last_change, payment_made
+    last_payment = 0
+    last_change = 0
+    payment_made = False
+    print("\nCashier session has been reset. Starting a new transaction...")
+
+
+def main_menu():
+    print("\n--- Main Menu ---")
+    print("1. Admin Login")
+    print("2. Cashier Login")
+
+    choice = input("\nEnter choice: ")
+
+    if choice == '1':
+        admin_login()
+    elif choice == '2':
+        cashier_login()
+    else:
+        print("\nInvalid choice. Try again.")
+        main_menu()
+
+
+def admin_login():
+    password = input("Enter admin password: ")
+    if password == admin_password:
+        admin_menu()
+    else:
+        print("\nIncorrect password.")
+        main_menu()
+
+
+def cashier_login():
+    password = input("Enter cashier password: ")
+    if password == cashier_password:
+        cashier_menu()
+    else:
+        print("\nIncorrect password.")
+        main_menu()
+
+
+if __name__ == "__main__":
+    main_menu()
