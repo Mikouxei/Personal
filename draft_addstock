@@ -1,0 +1,190 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using MySql.Data.MySqlClient;
+
+namespace FinalProject
+{
+    public partial class UCSTOCK : UserControl
+    {
+        MySqlConnection con = new MySqlConnection();
+        MySqlCommand cmd = new MySqlCommand();
+        MySqlDataReader dr;
+
+        public UCSTOCK()
+        {
+            InitializeComponent();
+        }
+
+        private void RoundPanelCorners(Panel panel, int radius)
+        {
+            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddArc(0, 0, radius, radius, 180, 90);
+            path.AddArc(panel.Width - radius, 0, radius, radius, 270, 90);
+            path.AddArc(panel.Width - radius, panel.Height - radius, radius, radius, 0, 90);
+            path.AddArc(0, panel.Height - radius, radius, radius, 90, 90);
+            path.CloseAllFigures();
+            panel.Region = new Region(path);
+        }
+
+        private void RoundButton(Button btn, int radius)
+        {
+            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddArc(0, 0, radius, radius, 180, 90);
+            path.AddArc(btn.Width - radius, 0, radius, radius, 270, 90);
+            path.AddArc(btn.Width - radius, btn.Height - radius, radius, radius, 0, 90);
+            path.AddArc(0, btn.Height - radius, radius, radius, 90, 90);
+            path.CloseAllFigures();
+            btn.Region = new Region(path);
+        }
+
+        private void function_enabled()
+        {
+            BTNSAVE.Enabled = true;
+            BTNCANCEL.Enabled = true;
+
+            PBSAVE.Visible = true;
+            PBSAVEGRAY.Visible = false;
+            PBCANCEL.Visible = true;
+            PBCANCELGRAY.Visible = false;
+
+            UCADDSTOCK.Enabled = true;
+            UCADDSTOCK.Controls[0].Enabled = true;
+            UCADDSTOCK.GotFocus += (s, e) => UCADDSTOCK.Parent.Focus();
+         
+        }
+
+        private void function_disabled()
+        {
+            BTNSAVE.Enabled = false;
+            BTNCANCEL.Enabled = false;
+
+            PBSAVE.Visible = false;
+            PBSAVEGRAY.Visible = true;
+            PBCANCEL.Visible = false;
+            PBCANCELGRAY.Visible = true;
+
+            UCADDSTOCK.Enabled = false;
+            UCADDSTOCK.BackColor = Color.White;
+            UCADDSTOCK.Controls[0].Enabled = false;
+            UCADDSTOCK.Cursor = Cursors.Default;
+        }
+
+        private void refresh_grid()
+        {
+            this.tbl_productsTableAdapter.Fill(this.finalproject_dbDataSet.tbl_products);
+        }
+
+        private void UCSTOCK_Load(object sender, EventArgs e)
+        {
+            //--------------------------------------|| DATABASE ||--------------------------------------//
+
+            this.tbl_productsTableAdapter.Fill(this.finalproject_dbDataSet.tbl_products);
+
+            //--------------------------------------|| PANEL ROUNDED CORNERS ||--------------------------------------//
+
+            RoundPanelCorners(PNLUCDB, 20);
+            RoundPanelCorners(PNLUCTXT, 20);
+            //RoundPanelCorners(PNLSEARCH, 20);
+            //RoundPanelCorners(PNLBTN, 10);
+
+            //--------------------------------------|| BUTTON ROUNDED CORNERS ||--------------------------------------//
+
+            RoundButton(BTNCLEAR, 20);
+
+            //--------------------------------------|| USER ACCOUNTS BUTTONS ||--------------------------------------//
+
+            BTNSAVE.FlatAppearance.BorderColor = BTNSAVE.Parent.BackColor;
+            BTNSAVE.FlatAppearance.MouseOverBackColor = System.Drawing.ColorTranslator.FromHtml("#f0fff5");
+            BTNSAVE.FlatAppearance.MouseDownBackColor = System.Drawing.ColorTranslator.FromHtml("#e2f0e7");
+
+            BTNCANCEL.FlatAppearance.BorderColor = BTNCANCEL.Parent.BackColor;
+            BTNCANCEL.FlatAppearance.MouseOverBackColor = System.Drawing.ColorTranslator.FromHtml("#f0fff5");
+            BTNCANCEL.FlatAppearance.MouseDownBackColor = System.Drawing.ColorTranslator.FromHtml("#e2f0e7");
+    
+        }
+
+        private void DGVPRODUCTS_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                DataGridViewRow row = this.DGVPRODUCTS.Rows[e.RowIndex];
+                UCTXTPCODE.Text = row.Cells[0].Value.ToString();
+                UCTXTPN.Text = row.Cells[1].Value.ToString();
+                UCTXTCSTOCK.Text = row.Cells[5].Value.ToString();
+            }
+            function_enabled();
+        }
+
+        private void BTNSAVE_Click(object sender, EventArgs e)
+        {
+            if (UCADDSTOCK.Text == "0")
+            {
+                MessageBox.Show("Adding 0 stock is not allowed. Please enter a value greater than 0.", "Error Saving", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            //--------------------------------------|| SAVE - TBLSTOCKS ||--------------------------------------//
+            con.ConnectionString = Properties.Settings.Default.finalproject_dbConnectionString;
+            cmd.Connection = con;
+            con.Open();
+            cmd.CommandText = "insert into tbl_stocks (productcode, productname, stockadded, dateadded) values (@pcode, @pn, @sa, @da)";
+            cmd.Parameters.Clear();
+            cmd.Parameters.AddWithValue("@pcode", UCTXTPCODE.Text);
+            cmd.Parameters.AddWithValue("@pn", UCTXTPN.Text);
+            cmd.Parameters.AddWithValue("@sa", UCADDSTOCK.Text);
+            cmd.Parameters.AddWithValue("@da", DateTime.Now);
+            cmd.ExecuteNonQuery();
+            con.Close();
+            MessageBox.Show("New product stock has been added successfully.", "Stock Addded", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+
+            //--------------------------------------|| UPDATE - TBLPRODUCTS ||--------------------------------------//
+            double UPDATEDSTOCK = Convert.ToDouble(UCTXTCSTOCK.Text) + Convert.ToDouble(UCADDSTOCK.Text);
+            con.Open();
+            cmd.CommandText = "update tbl_products set currentstock = @st where productcode = @pcode";
+            cmd.Parameters.Clear();
+            cmd.Parameters.AddWithValue("@st", UPDATEDSTOCK);
+            cmd.Parameters.AddWithValue("@pcode", UCTXTPCODE.Text);
+            cmd.ExecuteNonQuery();
+            con.Close();
+            refresh_grid();
+            function_disabled();
+            UCTXTPN.Text = "";
+            UCTXTPCODE.Text = "";
+            UCTXTCSTOCK.Text = "";
+            UCADDSTOCK.Text = "0";
+        }
+
+        private void BTNCANCEL_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show("Are you sure?", "Cancel", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (result == DialogResult.Yes)
+            {
+                UCTXTPN.Clear();
+                UCTXTPCODE.Clear();
+                UCTXTCSTOCK.Clear();
+                UCADDSTOCK.Text = "0";
+                function_disabled();
+
+                refresh_grid();
+            }
+        }
+
+        private void TXTSEARCH_TextChanged(object sender, EventArgs e)
+        {
+            tblproductsBindingSource.Filter = "productcode LIKE '%" + TXTSEARCH.Text.Replace("'", "''") + "%' OR productname LIKE '%" + TXTSEARCH.Text.Replace("'", "''") + "%' OR productcategory LIKE '%" + TXTSEARCH.Text.Replace("'", "''") + "%' OR brand LIKE '%" + TXTSEARCH.Text.Replace("'", "''") + "%'";
+        }
+
+        private void BTNCLEAR_Click(object sender, EventArgs e)
+        {
+            TXTSEARCH.Text = "";
+        }
+    }
+}
